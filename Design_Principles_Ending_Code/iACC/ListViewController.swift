@@ -157,13 +157,7 @@ class ListViewController: UITableViewController {
 			}
 		}
 	}
-	
-    func show(error: Error) {
-        let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Ok", style: .default))
-        showDetailViewController(alert, sender: self)
-    }
-    
+  
 	override func numberOfSections(in tableView: UITableView) -> Int {
 		1
 	}
@@ -175,7 +169,7 @@ class ListViewController: UITableViewController {
 	override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 		let item = items[indexPath.row]
 		let cell = tableView.dequeueReusableCell(withIdentifier: "ItemCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "ItemCell")
-		cell.configure(item)
+        cell.configure(item)
 		return cell
 	}
 	
@@ -282,5 +276,11 @@ extension UIViewController {
     
     @objc func requestMoney() {
         show(RequestMoneyViewController(), sender: self)
+    }
+    
+    func show(error: Error) {
+        let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Ok", style: .default))
+        showDetailViewController(alert, sender: self)
     }
 }
