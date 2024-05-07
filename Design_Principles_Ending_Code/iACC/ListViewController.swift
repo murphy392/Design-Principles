@@ -5,7 +5,7 @@
 import UIKit
 
 class ListViewController: UITableViewController {
-	var items = [ItemViewModel]()
+	var items = [Any]()
 	
 	var retryCount = 0
 	var maxRetryCount = 0
@@ -107,19 +107,7 @@ class ListViewController: UITableViewController {
 				}
 			}
 			
-            self.items = filteredItems.map { item in
-                ItemViewModel(item, longDateStyle: longDateStyle, selection: { [weak self] in
-                    if let friend = item as? Friend {
-                        self?.select(friend: friend)
-                    } else if let card = item as? Card {
-                        self?.select(card: card)
-                    } else if let transfer = item as? Transfer {
-                        self?.select(transfer: transfer)
-                    } else {
-                        fatalError("unknown item: \(item)")
-                    }
-                })
-            }
+			self.items = filteredItems
 			self.refreshControl?.endRefreshing()
 			self.tableView.reloadData()
 			
@@ -138,26 +126,26 @@ class ListViewController: UITableViewController {
 					DispatchQueue.mainAsyncIfNeeded {
 						switch result {
 						case let .success(items):
-                            self?.items = items.map { item in
-                                ItemViewModel(friend: item, selection: { [weak self] in
-                                        self?.select(friend: item)
-                                })
-                            }
+							self?.items = items
 							self?.tableView.reloadData()
 							
 						case let .failure(error):
-							self?.show(error: error)
+							let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+							alert.addAction(UIAlertAction(title: "Ok", style: .default))
+							self?.presenterVC.present(alert, animated: true)
 						}
 						self?.refreshControl?.endRefreshing()
 					}
 				}
 			} else {
-                self.show(error: error)
+				let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+				alert.addAction(UIAlertAction(title: "Ok", style: .default))
+				self.presenterVC.present(alert, animated: true)
 				self.refreshControl?.endRefreshing()
 			}
 		}
 	}
-  
+	
 	override func numberOfSections(in tableView: UITableView) -> Int {
 		1
 	}
@@ -169,52 +157,80 @@ class ListViewController: UITableViewController {
 	override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 		let item = items[indexPath.row]
 		let cell = tableView.dequeueReusableCell(withIdentifier: "ItemCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "ItemCell")
-        cell.configure(item)
+        let vm = ItemViewModel(item, longDateStyle: longDateStyle)
+		cell.configure(vm)
 		return cell
 	}
 	
 	override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 		let item = items[indexPath.row]
-        item.select()
+		if let friend = item as? Friend {
+			let vc = FriendDetailsViewController()
+			vc.friend = friend
+			navigationController?.pushViewController(vc, animated: true)
+		} else if let card = item as? Card {
+			let vc = CardDetailsViewController()
+			vc.card = card
+			navigationController?.pushViewController(vc, animated: true)
+		} else if let transfer = item as? Transfer {
+			let vc = TransferDetailsViewController()
+			vc.transfer = transfer
+			navigationController?.pushViewController(vc, animated: true)
+		} else {
+			fatalError("unknown item: \(item)")
+		}
+	}
+	
+	@objc func addCard() {
+		navigationController?.pushViewController(AddCardViewController(), animated: true)
+	}
+	
+	@objc func addFriend() {
+		navigationController?.pushViewController(AddFriendViewController(), animated: true)
+	}
+	
+	@objc func sendMoney() {
+		navigationController?.pushViewController(SendMoneyViewController(), animated: true)
+	}
+	
+	@objc func requestMoney() {
+		navigationController?.pushViewController(RequestMoneyViewController(), animated: true)
 	}
 }
 
-struct ItemViewModel {
+struct ItemViewModel{
     let title: String
-    let subtitle: String
-    let select: () -> Void
+    let subTitle: String
     
-    init (_ item: Any, longDateStyle: Bool, selection: @escaping() -> Void) {
+    init(_ item: Any, longDateStyle: Bool) {
         if let friend = item as? Friend {
-            self.init(friend: friend, selection: selection)
+            self.init(friend: friend)
         } else if let card = item as? Card {
-            self.init(card: card, selection: selection)
+            self.init(card: card)
         } else if let transfer = item as? Transfer {
-            self.init(transfer: transfer, longDateStyle: longDateStyle, selection: selection)
+            self.init(transfer: transfer, longDateStyle: longDateStyle)
         } else {
             fatalError("unknown item: \(item)")
         }
     }
 }
-
-extension ItemViewModel {
-    init (friend: Friend, selection: @escaping() -> Void) {
+ 
+extension ItemViewModel{
+    init (friend: Friend) {
         title = friend.name
-        subtitle = friend.phone
-        select = selection
+        subTitle = friend.phone
     }
 }
-
-extension ItemViewModel {
-    init (card: Card, selection: @escaping() -> Void) {
+    
+extension ItemViewModel{
+    init (card: Card){
         title = card.number
-        subtitle = card.holder
-        select = selection
+        subTitle = card.holder
     }
 }
-
-extension ItemViewModel {
-    init (transfer: Transfer, longDateStyle: Bool, selection: @escaping() -> Void) {
+ 
+extension ItemViewModel{
+    init (transfer: Transfer, longDateStyle: Bool){
         let numberFormatter = Formatters.number
         numberFormatter.numberStyle = .currency
         numberFormatter.currencyCode = transfer.currencyCode
@@ -226,61 +242,18 @@ extension ItemViewModel {
         if longDateStyle {
             dateFormatter.dateStyle = .long
             dateFormatter.timeStyle = .short
-            subtitle = "REceived from: \(transfer.sender) on \(dateFormatter.string(from: transfer.date))"
+            subTitle = "Sent to: \(transfer.recipient) on \(dateFormatter.string(from: transfer.date))"
         } else {
             dateFormatter.dateStyle = .short
             dateFormatter.timeStyle = .short
-            subtitle = "Received from: \(transfer.sender) on \(dateFormatter.string(from: transfer.date))"
+            subTitle = "Received from: \(transfer.sender) on \(dateFormatter.string(from: transfer.date))"
         }
-        select = selection
     }
 }
 
 extension UITableViewCell {
     func configure(_ vm: ItemViewModel) {
         textLabel?.text = vm.title
-        detailTextLabel?.text = vm.subtitle
-    }
-}
-
-extension UIViewController {
-    func select(friend: Friend){
-        let vc = FriendDetailsViewController()
-        vc.friend = friend
-        show(vc, sender: self)
-    }
-    
-    func select(card: Card) {
-        let vc = CardDetailsViewController()
-        vc.card = card
-        show(vc, sender: self)
-    }
-    
-    func select(transfer: Transfer) {
-        let vc = TransferDetailsViewController()
-        vc.transfer = transfer
-        show(vc, sender: self)
-    }
-    
-    @objc func addCard() {
-        show(AddCardViewController(), sender: self)
-    }
-    
-    @objc func addFriend() {
-        show(AddFriendViewController(), sender: self)
-    }
-    
-    @objc func sendMoney() {
-        show(SendMoneyViewController(), sender: self)
-    }
-    
-    @objc func requestMoney() {
-        show(RequestMoneyViewController(), sender: self)
-    }
-    
-    func show(error: Error) {
-        let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Ok", style: .default))
-        showDetailViewController(alert, sender: self)
+        detailTextLabel?.text = vm.subTitle
     }
 }
