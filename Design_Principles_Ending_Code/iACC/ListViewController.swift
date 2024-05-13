@@ -1,10 +1,6 @@
 //
 // Copyright © Essential Developer. All rights reserved.
 //
-//The goal is to NOT change the tests. How can I fix (if possible) the code to not change the tests. I do acknowledge
-//that the current version of swift (as of 05/07/2024 may not allwo this)
-//The tests were run on iPhone 12 as of 05/07/2024 I am running iPhone 15 and the tests are FAILING due to code changes.
-//I will not be uploading the vidoes I am referencing but they will be available upon reuqest 
 
 import UIKit
 
@@ -171,7 +167,7 @@ class ListViewController: UITableViewController {
 	override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 		let item = items[indexPath.row]
 		let cell = tableView.dequeueReusableCell(withIdentifier: "ItemCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "ItemCell")
-        //52:04 Tests have failures. Do I have a different version preventing the tests from passing successfully?
+        cell.configure(item)
 		return cell
 	}
 	
@@ -186,17 +182,6 @@ struct ItemViewModel{
     let subTitle: String
     let select: () -> Void //selection closure
     
-    init(_ item: Any, longDateStyle: Bool, selection: @escaping () -> Void) {
-        if let friend = item as? Friend {
-            self.init(friend: friend, selection: selection)
-        } else if let card = item as? Card {
-            self.init(card: card, selection: selection)
-        } else if let transfer = item as? Transfer {
-            self.init(transfer: transfer, longDateStyle: longDateStyle, selection: selection)
-        } else {
-            fatalError("unknown item: \(item)")
-        }
-    }
 }
  
 extension ItemViewModel{
