@@ -65,7 +65,7 @@ class MainTabBarController: UITabBarController {
         
         let isPremium = User.shared?.isPremium == true
         
-        vc.service = FriendsAPIItemService(api: FriendsAPI.shared, cache: isPremium ? friendsCache : NullFriendsCache(), select: { [ weak vc ] item in vc?.select(friend: item)
+        vc.service = FriendsAPIItemServiceAdapter(api: FriendsAPI.shared, cache: isPremium ? friendsCache : NullFriendsCache(), select: { [ weak vc ] item in vc?.select(friend: item)
         })
         
 		return vc
@@ -86,17 +86,28 @@ class MainTabBarController: UITabBarController {
 	private func makeCardsList() -> ListViewController {
 		let vc = ListViewController()
 		vc.fromCardsScreen = true
+        vc.shouldRetry = false
+        
+        vc.title = "Cards"
+        
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: vc, action: #selector(addCard))
+        
+        
+        vc.service = CardsAPIItemServiceAdapter(api: CardAPI.shared, select: {
+            [ weak vc ] item in
+            vc?.select(card: item)
+        })
 		return vc
 	}
 	
 }
 
-struct FriendsAPIItemService: ItemsService {
+struct FriendsAPIItemServiceAdapter: ItemsService {
     let api: FriendsAPI
     let cache: FriendsCache
     let select: (Friend) -> Void
     
-    func loadFriends(completion: @escaping (Result<[ItemViewModel],  Error>) -> Void) {
+    func loadItems(completion: @escaping (Result<[ItemViewModel],  Error>) -> Void) {
         api.loadFriends {  result in
             DispatchQueue.mainAsyncIfNeeded {
                 completion(result.map{ items in
@@ -117,3 +128,27 @@ struct FriendsAPIItemService: ItemsService {
 class NullFriendsCache: FriendsCache {
     override func save(_ newFriends: [Friend]) {}
 }
+
+struct CardsAPIItemServiceAdapter: ItemsService {
+    let api: CardAPI
+    let select: (Card) -> Void
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel],  Error>) -> Void) {
+        api.loadCards {  result in
+            DispatchQueue.mainAsyncIfNeeded {
+                completion(result.map{ items in
+                    
+                    return items.map{ item in
+                        ItemViewModel(card: item, selection: {
+                            select(item)
+                        })
+                    }
+                })
+            }
+        }
+    }
+}
+
+//struct TransfersAPIItemServiceAdapter: ItemService {
+//    
+//}
