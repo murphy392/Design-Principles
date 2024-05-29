@@ -14,17 +14,6 @@ class ListViewController: UITableViewController {
     
     var service: ItemsService? //enables view controller to talk to the APIs through Abstraction
 	
-	var retryCount = 0
-	var maxRetryCount = 0
-	var shouldRetry = false
-	
-	var longDateStyle = false
-	
-	var fromReceivedTransfersScreen = false
-	var fromSentTransfersScreen = false
-	var fromCardsScreen = false
-	var fromFriendsScreen = false
-	
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		
@@ -49,44 +38,16 @@ class ListViewController: UITableViewController {
 	private func handleAPIResult(_ result: Result<[ItemViewModel], Error>) {
 		switch result {
 		case let .success(items):
-			self.retryCount = 0
 			
             self.items = items
 			self.refreshControl?.endRefreshing()
 			self.tableView.reloadData()
 			
 		case let .failure(error):
-			if shouldRetry && retryCount < maxRetryCount {
-				retryCount += 1
-				
-				refresh()
-				return
-			}
-			
-			retryCount = 0
-			
-			if fromFriendsScreen && User.shared?.isPremium == true {
-				(UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.loadFriends { [weak self] result in
-					DispatchQueue.mainAsyncIfNeeded {
-						switch result {
-						case let .success(items):
-                            self?.items = items.map { item in
-                                ItemViewModel(friend: item, selection: { [weak self ] in
-                                    self?.select(friend: item)
-                                })
-                            }
-							self?.tableView.reloadData()
-							
-						case let .failure(error):
-                            self?.show(error: error)
-						}
-						self?.refreshControl?.endRefreshing()
-					}
-				}
-			} else {
+
                 self.show(error: error)
 				self.refreshControl?.endRefreshing()
-			}
+			
 		}
 	}
 
